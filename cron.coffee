@@ -1,19 +1,21 @@
-# ##Dependencies
-# * `node-convice` for config validation.
-convict = require "convict"
-# * `node-time`: Extend the global Date object to include the `setTimezone` and `getTimezone`.
-time = require('time')(Date)
-# * `node-cron`: Triggers the time events.
-CronJob = require('cron').CronJob
-# * `node-chrono` Parses the dates for the `notifyWhen` function.
-chrono = require 'chrono-node'  
-#  * node.js imports.
-spawn = require("child_process").spawn
-util = require 'util'
-assert = require 'cassert'
-Q = require 'q'
-
 module.exports = (env) ->
+  # ##Dependencies
+  #  * node.js imports.
+  spawn = require("child_process").spawn
+  util = require 'util'
+
+  # * pimatic imports.
+  convict = env.require "convict"
+  Q = env.require 'q'
+  assert = env.require 'cassert'
+
+  # * `node-time`: Extend the global Date object to include the `setTimezone` and `getTimezone`.
+  time = require('time')(Date)
+  # * `node-chrono` Parses the dates for the `notifyWhen` function.
+  chrono = require 'chrono-node'  
+  # * `node-cron`: Triggers the time events.
+  CronJob = require('cron').CronJob
+
 
   # ##The ClockBackend
   class ClockBackend extends env.plugins.Plugin
