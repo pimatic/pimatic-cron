@@ -10,7 +10,7 @@
   "homepage": "http://github.com/sweetpi/pimatic",
   "repository": {
     "type": "git",
-    "url": "git://github.com/sweetpi/pimatic.git"
+    "url": "git://github.com/sweetpi/pimatic-cron.git"
   },
   "dependencies": {
     "chrono-node": "~0.1.6",
