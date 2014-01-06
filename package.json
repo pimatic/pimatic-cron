@@ -1,8 +1,9 @@
 { "name": "pimatic-cron",
-  "description": "cron plugin for pimatic",
+  "description": "Provides a predicates for time designations, so actions can be triggert at a specific time.",
   "author": "Oliver Schneider <oliverschneider89+sweetpi@gmail.com> (http://sweetpi.de)",
   "main": "cron.coffee",
   "files": [
+    "doc",
     "cron.coffee",
     "README.md"
   ],
