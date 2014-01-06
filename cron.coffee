@@ -24,13 +24,13 @@ module.exports = (env) ->
 
     # The `init` function just registers the clock actuator.
     init: (app, @server, @config) =>
-      server.registerSensor(new Clock config)
+      server.registerDevice(new Clock config)
 
   backend = new ClockBackend
 
   # ##The Clock-Actuator
   # Provides the time and time events for the rule module.
-  class Clock extends env.sensors.Sensor
+  class Clock extends env.devices.Sensor
     config: null
     listener: []
 

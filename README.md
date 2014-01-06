@@ -1,6 +1,7 @@
 pimatic cron plugin
 ===================
-Provides a clock module, so actions can be triggert at a specific time
+
+Provides a clock sensor, so actions can be triggert at a specific time
 
 Provided predicates
 -------------------
