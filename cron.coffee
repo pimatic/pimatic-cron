@@ -17,27 +17,23 @@ module.exports = (env) ->
   CronJob = require('cron').CronJob
 
 
-  # ##The ClockBackend
-  class ClockBackend extends env.plugins.Plugin
+  # ##The CronPlugin
+  class CronPlugin extends env.plugins.Plugin
     server: null
     config: null
 
     # The `init` function just registers the clock actuator.
     init: (app, @server, @config) =>
-      server.registerDevice(new Clock config)
+      server.ruleManager.addPredicateProvider(new CronPredicateProvider config)
 
-  backend = new ClockBackend
+  plugin = new CronPlugin
 
-  # ##The Clock-Actuator
+  # ##The PredicateProvider
   # Provides the time and time events for the rule module.
-  class Clock extends env.devices.Sensor
-    config: null
+  class CronPredicateProvider extends env.predicates.PredicateProvider
     listener: []
 
     constructor: (@config) ->
-      @id = "clock"
-      @name = "clock"
-
       @getSensorValue('time').then( (time) =>
         env.logger.info "the time is: #{time}"
       )
@@ -225,4 +221,4 @@ module.exports = (env) ->
         dayOfWeek: dayOfWeek
       }
 
-  return backend
+  return plugin
