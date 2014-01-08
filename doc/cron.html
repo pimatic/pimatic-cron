@@ -13,21 +13,17 @@
 <li><code>node-chrono</code> Parses the dates for the <code>notifyWhen</code> function.</li>
 </ul></div></div><div class="code"><div class="wrapper">  <span class="nv">chrono = </span><span class="nx">require</span> <span class="s">&#39;chrono-node&#39;</span>  </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ul>
 <li><code>node-cron</code>: Triggers the time events.</li>
-</ul></div></div><div class="code"><div class="wrapper">  <span class="nv">CronJob = </span><span class="nx">require</span><span class="p">(</span><span class="s">&#39;cron&#39;</span><span class="p">).</span><span class="nx">CronJob</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="the-clockbackend">The ClockBackend</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper">  <span class="k">class</span> <span class="nx">ClockBackend</span> <span class="k">extends</span> <span class="nx">env</span><span class="p">.</span><span class="nx">plugins</span><span class="p">.</span><span class="nx">Plugin</span>
+</ul></div></div><div class="code"><div class="wrapper">  <span class="nv">CronJob = </span><span class="nx">require</span><span class="p">(</span><span class="s">&#39;cron&#39;</span><span class="p">).</span><span class="nx">CronJob</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="the-cronplugin">The CronPlugin</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper">  <span class="k">class</span> <span class="nx">CronPlugin</span> <span class="k">extends</span> <span class="nx">env</span><span class="p">.</span><span class="nx">plugins</span><span class="p">.</span><span class="nx">Plugin</span>
     <span class="nv">server: </span><span class="kc">null</span>
     <span class="nv">config: </span><span class="kc">null</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>The <code>init</code> function just registers the clock actuator.</p></div></div><div class="code"><div class="wrapper">    <span class="nv">init: </span><span class="nf">(app, @server, @config) =&gt;</span>
-      <span class="nx">server</span><span class="p">.</span><span class="nx">registerDevice</span><span class="p">(</span><span class="k">new</span> <span class="nx">Clock</span> <span class="nx">config</span><span class="p">)</span>
+      <span class="nx">server</span><span class="p">.</span><span class="nx">ruleManager</span><span class="p">.</span><span class="nx">addPredicateProvider</span><span class="p">(</span><span class="k">new</span> <span class="nx">CronPredicateProvider</span> <span class="nx">config</span><span class="p">)</span>
 
-  <span class="nv">backend = </span><span class="k">new</span> <span class="nx">ClockBackend</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="the-clock-actuator">The Clock-Actuator</h2>
+  <span class="nv">plugin = </span><span class="k">new</span> <span class="nx">CronPlugin</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="the-predicateprovider">The PredicateProvider</h2>
 
-<p>Provides the time and time events for the rule module.</p></div></div><div class="code"><div class="wrapper">  <span class="k">class</span> <span class="nx">Clock</span> <span class="k">extends</span> <span class="nx">env</span><span class="p">.</span><span class="nx">devices</span><span class="p">.</span><span class="nx">Sensor</span>
-    <span class="nv">config: </span><span class="kc">null</span>
+<p>Provides the time and time events for the rule module.</p></div></div><div class="code"><div class="wrapper">  <span class="k">class</span> <span class="nx">CronPredicateProvider</span> <span class="k">extends</span> <span class="nx">env</span><span class="p">.</span><span class="nx">predicates</span><span class="p">.</span><span class="nx">PredicateProvider</span>
     <span class="nv">listener: </span><span class="p">[]</span>
 
     <span class="nv">constructor: </span><span class="nf">(@config) -&gt;</span>
-      <span class="vi">@id = </span><span class="s">&quot;clock&quot;</span>
-      <span class="vi">@name = </span><span class="s">&quot;clock&quot;</span>
-
       <span class="nx">@getSensorValue</span><span class="p">(</span><span class="s">&#39;time&#39;</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span> <span class="nf">(time) =&gt;</span>
         <span class="nx">env</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">info</span> <span class="s">&quot;the time is: </span><span class="si">#{</span><span class="nx">time</span><span class="si">}</span><span class="s">&quot;</span>
       <span class="p">)</span>
@@ -193,4 +189,4 @@ to:
         <span class="nv">dayOfWeek: </span><span class="nx">dayOfWeek</span>
       <span class="p">}</span>
 
-  <span class="k">return</span> <span class="nx">backend</span></div></div></div></div></body></html>
+  <span class="k">return</span> <span class="nx">plugin</span></div></div></div></div></body></html>
