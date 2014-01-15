@@ -4,6 +4,7 @@
   "main": "cron.coffee",
   "files": [
     "doc",
+    "test",
     "cron.coffee",
     "README.md"
   ],
