@@ -19,12 +19,10 @@ module.exports = (env) ->
 
   # ##The CronPlugin
   class CronPlugin extends env.plugins.Plugin
-    server: null
-    config: null
 
     # The `init` function just registers the clock actuator.
-    init: (app, @server, @config) =>
-      server.ruleManager.addPredicateProvider(new CronPredicateProvider config)
+    init: (app, @framework, @config) =>
+      framework.ruleManager.addPredicateProvider(new CronPredicateProvider config)
 
   plugin = new CronPlugin
 
@@ -34,24 +32,13 @@ module.exports = (env) ->
     listener: []
 
     constructor: (@config) ->
-      @getSensorValue('time').then( (time) =>
-        env.logger.info "the time is: #{time}"
-      )
+      env.logger.info "the time is: #{@getTime()}"
       return 
 
-    # Only provides a date object as sensor value
-    getSensorValuesNames: ->
-      "time"
-
-    getSensorValue: (name)->
-      self = this
-      Q.fcall ->
-        switch name
-          when "time"
-            now = new Date
-            now.setTimezone self.config.timezone
-            return now
-          else throw new Error("Clock sensor doesn't provide sensor value \"#{name}\"")
+    getTime: () -> 
+      now = new Date
+      now.setTimezone @config.timezone
+      return now
 
     canDecide: (predicate) ->
       parsedDate = @parseNaturalTextDate predicate
@@ -66,7 +53,7 @@ module.exports = (env) ->
       if parsedDate?
         modifier = @parseNaturalTextModifier predicate
         {second, minute, hour, day, month, dayOfWeek} = @parseDateToCronFormat parsedDate
-        return self.getSensorValue("time").then( (now)->
+        return Q(@getTime()).then( (now)->
           dateObj = parsedDate.start.date self.config.timezone
           return switch modifier
             when 'exact'
