@@ -14,8 +14,7 @@ module.exports = (env) ->
   # * `node-chrono` Parses the dates for the `notifyWhen` function.
   chrono = require 'chrono-node'  
   # * `node-cron`: Triggers the time events.
-  CronJob = require('cron').CronJob
-
+  CronJob = env.CronJob or require('cron').CronJob
 
   # ##The CronPlugin
   class CronPlugin extends env.plugins.Plugin

@@ -5,14 +5,19 @@ module.exports = (env) ->
 
   describe "cron", ->
 
-    plugin = (env.require 'pimatic-cron') env
+    plugin = null
 
     before =>
       @config = {}
-      @clock = sinon.useFakeTimers()
+      env.CronJob = (
+        class DummyCronJob
+          constructor: (@options) ->
+          start: () -> @startCalled = yes
+          stop: () -> @stopCalled = yes
+      )
+      plugin = (env.require 'pimatic-cron') env
 
     after =>
-      @clock.restore()
 
     describe 'CronPlugin', =>
       describe "#init()", =>
@@ -145,14 +150,20 @@ module.exports = (env) ->
             finish()
           )
 
-          that.clock.tick(60*60*1000*9)
+          assert that.cronPredProv.listener["test1"]?
+          listener = that.cronPredProv.listener["test1"]
+          assert listener.cronjob?
+          assert listener.cronjob.options?
+          assert.equal listener.cronjob.options.cronTime, "0 0 9 * * *"
+          assert listener.cronjob.startCalled
+
+          listener.cronjob.options.onTick()
 
       describe '#cancelNotify()', =>
 
         it "should cancel notify test1", =>
           @cronPredProv.cancelNotify "test1"
-          assert not @cronPredProv.listener["test1"]?
-          @clock.tick(60*60*1000*48)
+          assert not @cronPredProv.listener["test1"]? 
 
 
 
