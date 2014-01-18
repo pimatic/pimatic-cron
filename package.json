@@ -17,7 +17,7 @@
   "dependencies": {
     "chrono-node": "~0.1.6",
     "cron": "~1.0.1",
-    "time": "~0.9.0"
+    "time": "0.10.0"
   },
   "peerDependencies": {
     "pimatic": "0.4.*"
