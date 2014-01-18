@@ -13,10 +13,8 @@
 <li><code>node-chrono</code> Parses the dates for the <code>notifyWhen</code> function.</li>
 </ul></div></div><div class="code"><div class="wrapper">  <span class="nv">chrono = </span><span class="nx">require</span> <span class="s">&#39;chrono-node&#39;</span>  </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><ul>
 <li><code>node-cron</code>: Triggers the time events.</li>
-</ul></div></div><div class="code"><div class="wrapper">  <span class="nv">CronJob = </span><span class="nx">require</span><span class="p">(</span><span class="s">&#39;cron&#39;</span><span class="p">).</span><span class="nx">CronJob</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="the-cronplugin">The CronPlugin</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper">  <span class="k">class</span> <span class="nx">CronPlugin</span> <span class="k">extends</span> <span class="nx">env</span><span class="p">.</span><span class="nx">plugins</span><span class="p">.</span><span class="nx">Plugin</span>
-    <span class="nv">server: </span><span class="kc">null</span>
-    <span class="nv">config: </span><span class="kc">null</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>The <code>init</code> function just registers the clock actuator.</p></div></div><div class="code"><div class="wrapper">    <span class="nv">init: </span><span class="nf">(app, @server, @config) =&gt;</span>
-      <span class="nx">server</span><span class="p">.</span><span class="nx">ruleManager</span><span class="p">.</span><span class="nx">addPredicateProvider</span><span class="p">(</span><span class="k">new</span> <span class="nx">CronPredicateProvider</span> <span class="nx">config</span><span class="p">)</span>
+</ul></div></div><div class="code"><div class="wrapper">  <span class="nv">CronJob = </span><span class="nx">env</span><span class="p">.</span><span class="nx">CronJob</span> <span class="o">or</span> <span class="nx">require</span><span class="p">(</span><span class="s">&#39;cron&#39;</span><span class="p">).</span><span class="nx">CronJob</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="the-cronplugin">The CronPlugin</h2></div></div></div><div class="segment"><div class="code"><div class="wrapper">  <span class="k">class</span> <span class="nx">CronPlugin</span> <span class="k">extends</span> <span class="nx">env</span><span class="p">.</span><span class="nx">plugins</span><span class="p">.</span><span class="nx">Plugin</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>The <code>init</code> function just registers the clock actuator.</p></div></div><div class="code"><div class="wrapper">    <span class="nv">init: </span><span class="nf">(app, @framework, @config) =&gt;</span>
+      <span class="nx">framework</span><span class="p">.</span><span class="nx">ruleManager</span><span class="p">.</span><span class="nx">addPredicateProvider</span><span class="p">(</span><span class="k">new</span> <span class="nx">CronPredicateProvider</span> <span class="nx">config</span><span class="p">)</span>
 
   <span class="nv">plugin = </span><span class="k">new</span> <span class="nx">CronPlugin</span></div></div></div><div class="segment"><div class="comments "><div class="wrapper"><h2 id="the-predicateprovider">The PredicateProvider</h2>
 
@@ -24,21 +22,13 @@
     <span class="nv">listener: </span><span class="p">[]</span>
 
     <span class="nv">constructor: </span><span class="nf">(@config) -&gt;</span>
-      <span class="nx">@getSensorValue</span><span class="p">(</span><span class="s">&#39;time&#39;</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span> <span class="nf">(time) =&gt;</span>
-        <span class="nx">env</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">info</span> <span class="s">&quot;the time is: </span><span class="si">#{</span><span class="nx">time</span><span class="si">}</span><span class="s">&quot;</span>
-      <span class="p">)</span>
-      <span class="k">return</span> </div></div></div><div class="segment"><div class="comments "><div class="wrapper"><p>Only provides a date object as sensor value</p></div></div><div class="code"><div class="wrapper">    <span class="nv">getSensorValuesNames: </span><span class="nf">-&gt;</span>
-      <span class="s">&quot;time&quot;</span>
+      <span class="nx">env</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">info</span> <span class="s">&quot;the time is: </span><span class="si">#{</span><span class="nx">@getTime</span><span class="p">()</span><span class="si">}</span><span class="s">&quot;</span>
+      <span class="k">return</span> 
 
-    <span class="nv">getSensorValue: </span><span class="nf">(name)-&gt;</span>
-      <span class="nv">self = </span><span class="k">this</span>
-      <span class="nx">Q</span><span class="p">.</span><span class="nx">fcall</span> <span class="nf">-&gt;</span>
-        <span class="k">switch</span> <span class="nx">name</span>
-          <span class="k">when</span> <span class="s">&quot;time&quot;</span>
-            <span class="nv">now = </span><span class="k">new</span> <span class="nb">Date</span>
-            <span class="nx">now</span><span class="p">.</span><span class="nx">setTimezone</span> <span class="nx">self</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">timezone</span>
-            <span class="k">return</span> <span class="nx">now</span>
-          <span class="k">else</span> <span class="k">throw</span> <span class="k">new</span> <span class="nb">Error</span><span class="p">(</span><span class="s">&quot;Clock sensor doesn&#39;t provide sensor value \&quot;</span><span class="si">#{</span><span class="nx">name</span><span class="si">}</span><span class="s">\&quot;&quot;</span><span class="p">)</span>
+    <span class="nv">getTime: </span><span class="p">()</span> <span class="nf">-&gt;</span> 
+      <span class="nv">now = </span><span class="k">new</span> <span class="nb">Date</span>
+      <span class="nx">now</span><span class="p">.</span><span class="nx">setTimezone</span> <span class="nx">@config</span><span class="p">.</span><span class="nx">timezone</span>
+      <span class="k">return</span> <span class="nx">now</span>
 
     <span class="nv">canDecide: </span><span class="nf">(predicate) -&gt;</span>
       <span class="nv">parsedDate = </span><span class="nx">@parseNaturalTextDate</span> <span class="nx">predicate</span>
@@ -50,7 +40,7 @@ predicate <code>"Sep 12-13"</code> is considert to be true if it is the 12th of 
       <span class="k">if</span> <span class="nx">parsedDate</span><span class="o">?</span>
         <span class="nv">modifier = </span><span class="nx">@parseNaturalTextModifier</span> <span class="nx">predicate</span>
         <span class="p">{</span><span class="nx">second</span><span class="p">,</span> <span class="nx">minute</span><span class="p">,</span> <span class="nx">hour</span><span class="p">,</span> <span class="nx">day</span><span class="p">,</span> <span class="nx">month</span><span class="p">,</span> <span class="nx">dayOfWeek</span><span class="p">}</span> <span class="o">=</span> <span class="nx">@parseDateToCronFormat</span> <span class="nx">parsedDate</span>
-        <span class="k">return</span> <span class="nx">self</span><span class="p">.</span><span class="nx">getSensorValue</span><span class="p">(</span><span class="s">&quot;time&quot;</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span> <span class="nf">(now)-&gt;</span>
+        <span class="k">return</span> <span class="nx">Q</span><span class="p">(</span><span class="nx">@getTime</span><span class="p">()).</span><span class="nx">then</span><span class="p">(</span> <span class="nf">(now)-&gt;</span>
           <span class="nv">dateObj = </span><span class="nx">parsedDate</span><span class="p">.</span><span class="nx">start</span><span class="p">.</span><span class="nx">date</span> <span class="nx">self</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">timezone</span>
           <span class="k">return</span> <span class="k">switch</span> <span class="nx">modifier</span>
             <span class="k">when</span> <span class="s">&#39;exact&#39;</span>
