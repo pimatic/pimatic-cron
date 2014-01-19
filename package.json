@@ -4,10 +4,11 @@
   "main": "cron.coffee",
   "files": [
     "doc",
+    "test",
     "cron.coffee",
     "README.md"
   ],
-  "version": "0.4.0",
+  "version": "0.5.0",
   "homepage": "http://github.com/sweetpi/pimatic",
   "repository": {
     "type": "git",
@@ -16,10 +17,10 @@
   "dependencies": {
     "chrono-node": "~0.1.6",
     "cron": "~1.0.1",
-    "time": "~0.9.0"
+    "time": "0.10.0"
   },
   "peerDependencies": {
-    "pimatic": "0.4.*"
+    "pimatic": "0.5.*"
   },
   "engines": {
     "node": ">0.8.x",
