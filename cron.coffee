@@ -45,7 +45,7 @@ module.exports = (env) ->
       return ( 
         if info? 
           if info.modifier is 'exact' then 'event'
-          else yes
+          else 'state'
         else no
       )
 

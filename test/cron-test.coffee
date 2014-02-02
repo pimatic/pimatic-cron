@@ -152,8 +152,6 @@ module.exports = (env) ->
         modifier: 'before'
       ]
 
-
-
       describe '#parseNaturalTextDate()', =>
         createTestNaturalText = (test, pred) =>
           it "should parse #{pred}", =>
