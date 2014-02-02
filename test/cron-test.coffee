@@ -53,6 +53,7 @@ module.exports = (env) ->
           day: "*"
           month: "*"
           dayOfWeek: "*"
+        modifier: 'exact'
       ,
         predicates: ["its 10pm", "22:00"]
         date:
@@ -68,6 +69,7 @@ module.exports = (env) ->
           day: "*"
           month: "*"
           dayOfWeek: "*"
+        modifier: 'exact'
       ,
         predicates: ["its 2am", "2:00"]
         date:
@@ -83,6 +85,7 @@ module.exports = (env) ->
           day: "*"
           month: "*"
           dayOfWeek: "*"
+        modifier: 'exact'
       ,
         predicates: ["friday"]
         date:
@@ -98,6 +101,7 @@ module.exports = (env) ->
           day: "*"
           month: "*"
           dayOfWeek: "5"
+        modifier: 'exact'
       ,
         predicates: ["friday 9:30"]
         date:
@@ -113,20 +117,58 @@ module.exports = (env) ->
           day: "*"
           month: "*"
           dayOfWeek: "5"
+        modifier: 'exact'
+      ,
+        predicates: ["its after 10am", "after 10am"]
+        date:
+          hour: 10
+          minute: 0
+          second: 0
+          dayOfWeek: undefined
+        impliedComponents: [ 'year', 'month', 'day' ]
+        cronFormat:
+          second: 0
+          minute: 0
+          hour: 10
+          day: "*"
+          month: "*"
+          dayOfWeek: "*"
+        modifier: 'after'
+      ,
+        predicates: ["its before 10am", "before 10am"]
+        date:
+          hour: 10
+          minute: 0
+          second: 0
+          dayOfWeek: undefined
+        impliedComponents: [ 'year', 'month', 'day' ]
+        cronFormat:
+          second: 0
+          minute: 0
+          hour: 10
+          day: "*"
+          month: "*"
+          dayOfWeek: "*"
+        modifier: 'before'
       ]
+
+
 
       describe '#parseNaturalTextDate()', =>
         createTestNaturalText = (test, pred) =>
           it "should parse #{pred}", =>
-            test.parsedDate = @cronPredProv.parseNaturalTextDate(pred)
-            parsedDate = test.parsedDate.start
+            info = @cronPredProv.parseNaturalTextDate(pred)
+            assert info?
+            assert.equal test.modifier, info.modifier
+            test.parseResult = info.parseResult
+            parseResult = test.parseResult.start
             for name, val of test.date
-              assert.equal val, parsedDate[name]
+              assert.equal val, parseResult[name]
 
-            assert parsedDate.impliedComponents?
+            assert parseResult.impliedComponents?
             for ic in test.impliedComponents
-              assert ic in parsedDate.impliedComponents
-            assert test.impliedComponents, parsedDate.impliedComponents        
+              assert ic in parseResult.impliedComponents
+            assert test.impliedComponents, parseResult.impliedComponents        
         for test in tests
           for pred in test.predicates
             createTestNaturalText test, pred
@@ -134,7 +176,7 @@ module.exports = (env) ->
       describe '#parseDateToCronFormat()', =>
         createTestCronFormat = (test, pred) =>
           it "should parse #{pred}", =>
-            cronFormat = @cronPredProv.parseDateToCronFormat test.parsedDate
+            cronFormat = @cronPredProv.parseDateToCronFormat test.parseResult.start
             assert.deepEqual test.cronFormat, cronFormat
         for test in tests
           for pred in test.predicates
@@ -143,7 +185,6 @@ module.exports = (env) ->
       describe '#notifyWhen()', =>
         that = @
         it "should notify when its 9:00", (finish) ->
-          this.timeout(0)
 
           that.cronPredProv.notifyWhen("test1", "its 9:00", (type) =>
             assert.equal "event", type
@@ -152,12 +193,105 @@ module.exports = (env) ->
 
           assert that.cronPredProv.listener["test1"]?
           listener = that.cronPredProv.listener["test1"]
-          assert listener.cronjob?
-          assert listener.cronjob.options?
-          assert.equal listener.cronjob.options.cronTime, "0 0 9 * * *"
-          assert listener.cronjob.startCalled
+          assert listener.cronjobs?
+          assert listener.cronjobs[0].options?
+          assert.equal listener.cronjobs[0].options.cronTime, "0 0 9 * * *"
+          assert listener.cronjobs[0].startCalled
 
-          listener.cronjob.options.onTick()
+          listener.cronjobs[0].options.onTick()
+
+        it "should notify when its after 9:00", (finish) ->
+
+          callCount = 0
+          that.cronPredProv.notifyWhen("test2", "its after 9:00", (type) =>
+            assert typeof type is "boolean"
+            callCount++
+            if callCount >= 2 then finish()
+          )
+
+          assert that.cronPredProv.listener["test2"]?
+          listener = that.cronPredProv.listener["test2"]  
+          assert listener.cronjobs?
+          assert listener.cronjobs.length is 2
+          assert listener.cronjobs[0].options?
+          assert.equal listener.cronjobs[0].options.cronTime, "0 0 9 * * *"
+          assert listener.cronjobs[0].startCalled
+          assert listener.cronjobs[1].options?
+          assert.equal listener.cronjobs[1].options.cronTime, "59 59 23 * * *"
+          assert listener.cronjobs[1].startCalled
+
+          listener.cronjobs[0].options.onTick()
+          listener.cronjobs[1].options.onTick()
+
+        it "should notify when its before 9:00", (finish) ->
+
+          callCount = 0
+          that.cronPredProv.notifyWhen("test3", "its before 9:00", (type) =>
+            assert typeof type is "boolean"
+            callCount++
+            if callCount >= 2 then finish()
+          )
+
+          assert that.cronPredProv.listener["test3"]?
+          listener = that.cronPredProv.listener["test3"]  
+          assert listener.cronjobs?
+          assert listener.cronjobs.length is 2
+          assert listener.cronjobs[0].options?
+          assert.equal listener.cronjobs[0].options.cronTime, "0 0 0 * * *"
+          assert listener.cronjobs[0].startCalled
+          assert listener.cronjobs[1].options?
+          assert.equal listener.cronjobs[1].options.cronTime, "0 0 9 * * *"
+          assert listener.cronjobs[1].startCalled
+
+          listener.cronjobs[0].options.onTick()
+          listener.cronjobs[1].options.onTick()
+
+      describe '#isTrue()', =>
+
+        that = @
+        it "should return true for its 11:00", (finish) ->
+          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
+          that.cronPredProv.isTrue("test1", "its 11:00").then( (result) =>
+            assert result is yes
+            finish()
+          ).catch(finish)
+
+        it "should return false for its 12:00", (finish) ->
+          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
+          that.cronPredProv.isTrue("test1", "its 12:00").then( (result) =>
+            assert result is no
+            finish()
+          ).catch(finish)
+
+        it "should return true for its before 13:00", (finish) ->
+          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
+          that.cronPredProv.isTrue("test1", "its before 13:00").then( (result) =>
+            assert result is yes
+            finish()
+          ).catch(finish)
+
+        it "should return false for its before 10:00", (finish) ->
+          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
+          that.cronPredProv.isTrue("test1", "its before 10:00").then( (result) =>
+            assert result is no
+            finish()
+          ).catch(finish)
+
+        it "should return true for its after 10:00", (finish) ->
+          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
+          that.cronPredProv.isTrue("test1", "its after 10:00").then( (result) =>
+            assert result is yes
+            finish()
+          ).catch(finish)
+
+        it "should return false for its after 13:00", (finish) ->
+          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
+          that.cronPredProv.isTrue("test1", "its after 13:00").then( (result) =>
+            assert result is no
+            finish()
+          ).catch(finish)
+
+
 
       describe '#cancelNotify()', =>
 

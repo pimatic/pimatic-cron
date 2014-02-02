@@ -58,16 +58,16 @@ module.exports = (env) ->
         now = info.parseResult.referenceDate
         start = info.parseResult.startDate
         end = info.parseResult.endDate
-        #console.log "now: ", now
-        #console.log "start: ", start
-        #console.log "end: ", end
-
+        # console.log "now: ", now
+        # console.log "start: ", start
+        # console.log "end: ", end
+        # console.log info.modifier
         return Q switch info.modifier
-          when 'exact' then start is now
+          when 'exact' then start >= now and start <= now # start == now does not work!
           when 'after' then now >= start
           when 'before' then now <= start
+          when 'range' then start <= now <= end
           else assert false
-        
       else
         throw new Error "Clock sensor can not decide \"#{predicate}\"!"
 
@@ -126,6 +126,24 @@ module.exports = (env) ->
               start: false
               timezone: @config.timezone
             )
+          when 'range'
+            # predicate gets true at the given time
+            jobs.push new CronJob(
+              cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
+              onTick: => callback(true)
+              start: false
+              timezone: @config.timezone
+            )
+            # and gets false at the end time
+            {second, minute, hour, day, month, dayOfWeek} = @parseDateToCronFormat(
+              info.parseResult.end
+            )
+            jobs.push new CronJob(
+              cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
+              onTick: => callback(false)
+              start: false
+              timezone: @config.timezone
+            )
           else assert false
         @listener[id] = 
           id: id
@@ -165,17 +183,20 @@ module.exports = (env) ->
       parseDateResults = null
       dataMatch = null
       ended = no
+      theTime = @getTime()
 
-      matchDate = (m) => m.match(/^(.+)()$/, (m, match) => 
-        dataMatch = match.trim()
-        parseDateResults = chrono.parse(dataMatch, @getTime())
-        m.onEnd( => ended = yes)
-      )
+      M.Matcher::matchDate = -> 
+        m = @match(/^(.+)()$/, (m, match) => 
+          dataMatch = match.trim() 
+          parseDateResults = chrono.parse(dataMatch, theTime)
+          if parseDateResults.length > 0 and parseDateResults[0].index is 0
+            m.onEnd( => ended = yes)
+        )
+        return m
 
-      m = M(naturalTextDate, context).match(['its', 'it is'])
-      matchDate(m)
-      m = m.match([' before ', ' after '], (m, match) => modifier = match.trim())
-      matchDate(m)
+      M(naturalTextDate, context).match(['its ', 'it is '], optional: yes)
+        .match(['before ', 'after '], optional: yes, (m, match) => modifier = match.trim())
+        .matchDate()
 
       if ended
         assert parseDateResults?
@@ -186,9 +207,13 @@ module.exports = (env) ->
           context?.addError("Multiple dates given: \"#{dataMatch}\"")
           return null
         parseResult = parseDateResults[0]
+
+        if modifier in ['after', 'before'] and parseResult.end?
+          context?.addError("You can't give a date range when using \"#{modifier}\"")
+
         unless modifier?
           if parseResult.end?
-            modifier = 'between'
+            modifier = 'range'
           else
             modifier = 'exact'
         return {
