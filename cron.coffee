@@ -55,13 +55,37 @@ module.exports = (env) ->
     isTrue: (id, predicate) ->
       info = @parseNaturalTextDate predicate
       if info?
+        console.log info.parseResult
         now = info.parseResult.referenceDate
         start = info.parseResult.startDate
         end = info.parseResult.endDate
+        time.extend(start)
+        time.extend(end)
+
+        unless info.parseResult.start.hour?
+          start.setHours now.getHours()
+        unless info.parseResult.start.minute?
+          start.setMinutes now.getMinutes()
+        unless info.parseResult.start.second?
+          start.setSeconds now.getSeconds()
+
+        if 'day' in info.parseResult.start.impliedComponents
+          start.setDate now.getDate()
+        if 'month' in info.parseResult.start.impliedComponents
+          start.setMonth now.getMonth()
+        if 'year' in info.parseResult.start.impliedComponents
+          start.setFullYear now.getFullYear()
+
+        if info.modifier is 'exact'
+          start.setMilliseconds now.getMilliseconds()
+          if info.parseResult.start.dayOfWeek?
+            if info.parseResult.start.dayOfWeek is not (now.getDay() + 1)
+              return Q(false)
+
         # console.log "now: ", now
         # console.log "start: ", start
         # console.log "end: ", end
-        # console.log info.modifier
+
         return Q switch info.modifier
           when 'exact' then start >= now and start <= now # start == now does not work!
           when 'after' then now >= start
