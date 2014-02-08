@@ -55,7 +55,6 @@ module.exports = (env) ->
     isTrue: (id, predicate) ->
       info = @parseNaturalTextDate predicate
       if info?
-        console.log info.parseResult
         now = info.parseResult.referenceDate
         start = info.parseResult.startDate
         end = info.parseResult.endDate
@@ -78,8 +77,9 @@ module.exports = (env) ->
 
         if info.modifier is 'exact'
           start.setMilliseconds now.getMilliseconds()
+
           if info.parseResult.start.dayOfWeek?
-            if info.parseResult.start.dayOfWeek is not (now.getDay() + 1)
+            if info.parseResult.start.dayOfWeek isnt now.getDay()
               return Q(false)
 
         # console.log "now: ", now
