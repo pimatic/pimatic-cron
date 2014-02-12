@@ -10,8 +10,6 @@ module.exports = (env) ->
   assert = env.require 'cassert'
   M = env.matcher
 
-  # * `node-time`: Extend the global Date object to include the `setTimezone` and `getTimezone`.
-  time = require('time')(Date)
   # * `node-chrono` Parses the dates for the `notifyWhen` function.
   chrono = require 'chrono-node'  
   # * `node-cron`: Triggers the time events.
@@ -37,7 +35,6 @@ module.exports = (env) ->
 
     getTime: () -> 
       now = new Date
-      now.setTimezone @config.timezone
       return now
 
     canDecide: (predicate, context) ->
@@ -58,8 +55,6 @@ module.exports = (env) ->
         now = info.parseResult.referenceDate
         start = info.parseResult.startDate
         end = info.parseResult.endDate
-        time.extend(start)
-        time.extend(end)
 
         unless info.parseResult.start.hour?
           start.setHours now.getHours()
@@ -116,7 +111,6 @@ module.exports = (env) ->
               cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
               onTick: => callback('event')
               start: false
-              timezone: @config.timezone
             )
           when 'before'
             ###
@@ -126,14 +120,12 @@ module.exports = (env) ->
               cronTime: "0 0 0 #{day} #{month} #{dayOfWeek}"
               onTick: => callback(true)
               start: false
-              timezone: @config.timezone
             )
             # and the predicate gets false at the given time
             jobs.push new CronJob(
               cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
               onTick: => callback(false)
               start: false
-              timezone: @config.timezone
             )
           when 'after'
             # predicate gets true at the given time
@@ -141,14 +133,12 @@ module.exports = (env) ->
               cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
               onTick: => callback(true)
               start: false
-              timezone: @config.timezone
             )
             # and false at the end of the day
             jobs.push new CronJob(
               cronTime: "59 59 23 #{day} #{month} #{dayOfWeek}"
               onTick: => callback(false)
               start: false
-              timezone: @config.timezone
             )
           when 'range'
             # predicate gets true at the given time
@@ -156,7 +146,6 @@ module.exports = (env) ->
               cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
               onTick: => callback(true)
               start: false
-              timezone: @config.timezone
             )
             # and gets false at the end time
             {second, minute, hour, day, month, dayOfWeek} = @parseDateToCronFormat(
@@ -166,7 +155,6 @@ module.exports = (env) ->
               cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
               onTick: => callback(false)
               start: false
-              timezone: @config.timezone
             )
           else assert false
         @listener[id] = 
