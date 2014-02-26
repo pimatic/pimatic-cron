@@ -39,7 +39,7 @@ module.exports = (env) ->
 
 
       tests = [
-        predicates: ["its 10am", "10am", "its 10:00", "it is 10:00"]
+        predicates: ["its 10am", "10am", "its 10:00"]
         date:
           hour: 10
           minute: 0
