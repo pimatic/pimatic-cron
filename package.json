@@ -19,7 +19,7 @@
     "cron": "~1.0.1"
   },
   "peerDependencies": {
-    "pimatic": "0.6.*"
+    "pimatic": ">0.6.0"
   },
   "engines": {
     "node": ">0.8.x",
