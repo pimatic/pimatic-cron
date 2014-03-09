@@ -21,6 +21,7 @@ module.exports = (env) ->
 
     describe 'CronPlugin', =>
       describe "#init()", =>
+
         it "should register the CronPredicateProvier", =>
           spy = sinon.spy()
           frameworkDummy =
@@ -155,10 +156,11 @@ module.exports = (env) ->
       describe '#parseNaturalTextDate()', =>
         createTestNaturalText = (test, pred) =>
           it "should parse #{pred}", =>
-            info = @cronPredProv.parseNaturalTextDate(pred)
-            assert info?
-            assert.equal test.modifier, info.modifier
-            test.parseResult = info.parseResult
+            result = @cronPredProv.parsePredicate(pred)
+            assert result?
+            assert.equal test.modifier, result.predicateHandler.modifier
+            test.predHandler = result.predicateHandler
+            test.parseResult = result.predicateHandler.reparseDateString()
             parseResult = test.parseResult.start
             for name, val of test.date
               assert.equal val, parseResult[name]
@@ -174,128 +176,133 @@ module.exports = (env) ->
       describe '#parseDateToCronFormat()', =>
         createTestCronFormat = (test, pred) =>
           it "should parse #{pred}", =>
-            cronFormat = @cronPredProv.parseDateToCronFormat test.parseResult.start
+            cronFormat = test.predHandler.parseDateToCronFormat test.parseResult.start
             assert.deepEqual test.cronFormat, cronFormat
         for test in tests
           for pred in test.predicates
             createTestCronFormat test, pred
 
-      describe '#notifyWhen()', =>
-        that = @
-        it "should notify when its 9:00", (finish) ->
+      describe 'CronPredicateHandler', =>
+        describe '#on "change"', =>
+          that = @
+          it "should notify when its 9:00", (finish) ->
 
-          that.cronPredProv.notifyWhen("test1", "its 9:00", (type) =>
-            assert.equal "event", type
-            finish()
-          )
+            parseResult = that.cronPredProv.parsePredicate("its 9:00")
+            predHandler = parseResult.predicateHandler
+            assert predHandler?
 
-          assert that.cronPredProv.listener["test1"]?
-          listener = that.cronPredProv.listener["test1"]
-          assert listener.cronjobs?
-          assert listener.cronjobs[0].options?
-          assert.equal listener.cronjobs[0].options.cronTime, "0 0 9 * * *"
-          assert listener.cronjobs[0].startCalled
+            predHandler.once('change', (type) =>
+              assert.equal "event", type
+              finish()
+            )
 
-          listener.cronjobs[0].options.onTick()
+            assert predHandler.jobs?
+            assert predHandler.jobs[0].options?
+            assert.equal predHandler.jobs[0].options.cronTime, "0 0 9 * * *"
+            assert predHandler.jobs[0].startCalled
 
-        it "should notify when its after 9:00", (finish) ->
+            predHandler.jobs[0].options.onTick()
 
-          callCount = 0
-          that.cronPredProv.notifyWhen("test2", "its after 9:00", (type) =>
-            assert typeof type is "boolean"
-            callCount++
-            if callCount >= 2 then finish()
-          )
+          it "should notify when its after 9:00", (finish) ->
 
-          assert that.cronPredProv.listener["test2"]?
-          listener = that.cronPredProv.listener["test2"]  
-          assert listener.cronjobs?
-          assert listener.cronjobs.length is 2
-          assert listener.cronjobs[0].options?
-          assert.equal listener.cronjobs[0].options.cronTime, "0 0 9 * * *"
-          assert listener.cronjobs[0].startCalled
-          assert listener.cronjobs[1].options?
-          assert.equal listener.cronjobs[1].options.cronTime, "59 59 23 * * *"
-          assert listener.cronjobs[1].startCalled
+            parseResult = that.cronPredProv.parsePredicate( "its after 9:00")
+            predHandler = parseResult.predicateHandler
+            assert predHandler?
 
-          listener.cronjobs[0].options.onTick()
-          listener.cronjobs[1].options.onTick()
+            callCount = 0
+            predHandler.on('change', (type) =>
+              assert typeof type is "boolean"
+              callCount++
+              if callCount >= 2 then finish()
+            )
 
-        it "should notify when its before 9:00", (finish) ->
+            assert predHandler.jobs?
+            assert predHandler.jobs.length is 2
+            assert predHandler.jobs[0].options?
+            assert.equal predHandler.jobs[0].options.cronTime, "0 0 9 * * *"
+            assert predHandler.jobs[0].startCalled
+            assert predHandler.jobs[1].options?
+            assert.equal predHandler.jobs[1].options.cronTime, "59 59 23 * * *"
+            assert predHandler.jobs[1].startCalled
 
-          callCount = 0
-          that.cronPredProv.notifyWhen("test3", "its before 9:00", (type) =>
-            assert typeof type is "boolean"
-            callCount++
-            if callCount >= 2 then finish()
-          )
+            predHandler.jobs[0].options.onTick()
+            predHandler.jobs[1].options.onTick()
 
-          assert that.cronPredProv.listener["test3"]?
-          listener = that.cronPredProv.listener["test3"]  
-          assert listener.cronjobs?
-          assert listener.cronjobs.length is 2
-          assert listener.cronjobs[0].options?
-          assert.equal listener.cronjobs[0].options.cronTime, "0 0 0 * * *"
-          assert listener.cronjobs[0].startCalled
-          assert listener.cronjobs[1].options?
-          assert.equal listener.cronjobs[1].options.cronTime, "0 0 9 * * *"
-          assert listener.cronjobs[1].startCalled
+          it "should notify when its before 9:00", (finish) ->
 
-          listener.cronjobs[0].options.onTick()
-          listener.cronjobs[1].options.onTick()
+            parseResult = that.cronPredProv.parsePredicate( "its before 9:00")
+            predHandler = parseResult.predicateHandler
+            assert predHandler?
 
-      describe '#isTrue()', =>
+            callCount = 0
+            predHandler.on('change', (type) =>
+              assert typeof type is "boolean"
+              callCount++
+              if callCount >= 2 then finish()
+            )
 
-        that = @
-        it "should return true for its 11:00", (finish) ->
-          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
-          that.cronPredProv.isTrue("test1", "its 11:00").then( (result) =>
-            assert result is yes
-            finish()
-          ).catch(finish)
+            assert predHandler.jobs?
+            assert predHandler.jobs.length is 2
+            assert predHandler.jobs[0].options?
+            assert.equal predHandler.jobs[0].options.cronTime, "0 0 0 * * *"
+            assert predHandler.jobs[0].startCalled
+            assert predHandler.jobs[1].options?
+            assert.equal predHandler.jobs[1].options.cronTime, "0 0 9 * * *"
+            assert predHandler.jobs[1].startCalled
 
-        it "should return false for its 12:00", (finish) ->
-          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
-          that.cronPredProv.isTrue("test1", "its 12:00").then( (result) =>
-            assert result is no
-            finish()
-          ).catch(finish)
+            predHandler.jobs[0].options.onTick()
+            predHandler.jobs[1].options.onTick()
 
-        it "should return true for its before 13:00", (finish) ->
-          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
-          that.cronPredProv.isTrue("test1", "its before 13:00").then( (result) =>
-            assert result is yes
-            finish()
-          ).catch(finish)
+        describe '#getValue()', =>
 
-        it "should return false for its before 10:00", (finish) ->
-          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
-          that.cronPredProv.isTrue("test1", "its before 10:00").then( (result) =>
-            assert result is no
-            finish()
-          ).catch(finish)
+          testCases = [
+            {
+              time: new Date(2014, 1, 1, 11)
+              predicate: "its 11:00"
+              isTrue: yes
+            }
+            {
+              time: new Date(2014, 1, 1, 11)
+              predicate: "its 12:00"
+              isTrue: no
+            }
+            {
+              time: new Date(2014, 1, 1, 11)
+              predicate: "its before 13:00"
+              isTrue: yes
+            }
+            {
+              time: new Date(2014, 1, 1, 11)
+              predicate: "its before 10:00"
+              isTrue: no
+            }
+            {
+              time: new Date(2014, 1, 1, 11)
+              predicate: "its after 10:00"
+              isTrue: yes
+            }
+            {
+              time: new Date(2014, 1, 1, 11)
+              predicate: "its after 13:00"
+              isTrue: no
+            }
+          ]
 
-        it "should return true for its after 10:00", (finish) ->
-          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
-          that.cronPredProv.isTrue("test1", "its after 10:00").then( (result) =>
-            assert result is yes
-            finish()
-          ).catch(finish)
+          that = @
 
-        it "should return false for its after 13:00", (finish) ->
-          that.cronPredProv.getTime = => new Date(2014, 1, 1, 11)
-          that.cronPredProv.isTrue("test1", "its after 13:00").then( (result) =>
-            assert result is no
-            finish()
-          ).catch(finish)
+          for tc in testCases
+            do(tc) =>
+              it "should return #{tc.isTrue} for \"#{tc.predicate}\"", (finish) ->
+                that.cronPredProv.getTime = => tc.time
+                parseResult = that.cronPredProv.parsePredicate(tc.predicate)
+                predHandler = parseResult.predicateHandler
+                assert predHandler?
 
+                predHandler.getValue().then( (result) =>
+                  assert result is tc.isTrue
+                  finish()
+                ).catch(finish)
 
-
-      describe '#cancelNotify()', =>
-
-        it "should cancel notify test1", =>
-          @cronPredProv.cancelNotify "test1"
-          assert not @cronPredProv.listener["test1"]? 
 
 
 

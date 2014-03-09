@@ -33,190 +33,38 @@ module.exports = (env) ->
       env.logger.info "the time is: #{@getTime()}"
       return 
 
-    getTime: () -> 
-      now = new Date
-      return now
 
-    canDecide: (predicate, context) ->
-      info = @parseNaturalTextDate predicate, context
-      return ( 
-        if info? 
-          if info.modifier is 'exact' then 'event'
-          else 'state'
-        else no
-      )
+    getTime: -> new Date()
 
-    # Returns `true` if the given predicate string is considert to be true. For example the 
-    # predicate `"Sep 12"` is considert to be true if it is the 12th of october, 2013 from 0 to 
-    # 23.59 o'clock. If the given predicate is not an valid date string an Error is thrown. 
-    isTrue: (id, predicate) ->
-      info = @parseNaturalTextDate predicate
-      if info?
-        now = info.parseResult.referenceDate
-        start = info.parseResult.startDate
-        end = info.parseResult.endDate
-
-        unless info.parseResult.start.hour?
-          start.setHours now.getHours()
-        unless info.parseResult.start.minute?
-          start.setMinutes now.getMinutes()
-        unless info.parseResult.start.second?
-          start.setSeconds now.getSeconds()
-
-        if 'day' in info.parseResult.start.impliedComponents
-          start.setDate now.getDate()
-        if 'month' in info.parseResult.start.impliedComponents
-          start.setMonth now.getMonth()
-        if 'year' in info.parseResult.start.impliedComponents
-          start.setFullYear now.getFullYear()
-
-        if info.modifier is 'exact'
-          start.setMilliseconds now.getMilliseconds()
-
-          if info.parseResult.start.dayOfWeek?
-            if info.parseResult.start.dayOfWeek isnt now.getDay()
-              return Q(false)
-
-        # console.log "now: ", now
-        # console.log "start: ", start
-        # console.log "end: ", end
-
-        return Q switch info.modifier
-          when 'exact' then start >= now and start <= now # start == now does not work!
-          when 'after' then now >= start
-          when 'before' then now <= start
-          when 'range' then start <= now <= end
-          else assert false
-      else
-        throw new Error "Clock sensor can not decide \"#{predicate}\"!"
-
-    # Removes the notification for an with `notifyWhen` registered predicate. 
-    cancelNotify: (id) ->
-      if @listener[id]?
-        for cj in @listener[id].cronjobs
-          cj.stop()
-        delete @listener[id]
-
-    # Registers notification for time events. 
-    notifyWhen: (id, predicate, callback) ->
-      info = @parseNaturalTextDate(predicate)
-      if info?
-        {second, minute, hour, day, month, dayOfWeek} = @parseDateToCronFormat(
-          info.parseResult.start
-        )
-        jobs = []
-        switch info.modifier
-          when 'exact'
-            jobs.push new CronJob(
-              cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
-              onTick: => callback('event')
-              start: false
-            )
-          when 'before'
-            ###
-            before means same day but before the time so the cronjob must trigger at 0:00 
-            ###
-            jobs.push new CronJob(
-              cronTime: "0 0 0 #{day} #{month} #{dayOfWeek}"
-              onTick: => callback(true)
-              start: false
-            )
-            # and the predicate gets false at the given time
-            jobs.push new CronJob(
-              cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
-              onTick: => callback(false)
-              start: false
-            )
-          when 'after'
-            # predicate gets true at the given time
-            jobs.push new CronJob(
-              cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
-              onTick: => callback(true)
-              start: false
-            )
-            # and false at the end of the day
-            jobs.push new CronJob(
-              cronTime: "59 59 23 #{day} #{month} #{dayOfWeek}"
-              onTick: => callback(false)
-              start: false
-            )
-          when 'range'
-            # predicate gets true at the given time
-            jobs.push new CronJob(
-              cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
-              onTick: => callback(true)
-              start: false
-            )
-            # and gets false at the end time
-            {second, minute, hour, day, month, dayOfWeek} = @parseDateToCronFormat(
-              info.parseResult.end
-            )
-            jobs.push new CronJob(
-              cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
-              onTick: => callback(false)
-              start: false
-            )
-          else assert false
-        @listener[id] = 
-          id: id
-          cronjobs: jobs
-          modifier: info.modifier
-        job.start() for job in jobs
-      else throw new Error "Clock sensor can not decide \"#{predicate}\"!"
-
-    # Take a date as string in natural language and parse it with 
-    # [chrono-node](https://github.com/berryboy/chrono).
-    # For example transforms:
-    # `"Sep 12-13"`
-    # to:
-    # 
-    #     { start: 
-    #       { year: 2013,
-    #         month: 8,
-    #         day: 12,
-    #         isCertain: [Function],
-    #         impliedComponents: [Object],
-    #         date: [Function] },
-    #      startDate: Thu Sep 12 2013 12:00:00 GMT+0900 (JST),
-    #      end: 
-    #       { year: 2013,
-    #         month: 8,
-    #         day: 13,
-    #         impliedComponents: [Object],
-    #         isCertain: [Function],
-    #         date: [Function] },
-    #      endDate: Fri Sep 13 2013 12:00:00 GMT+0900 (JST),
-    #      referenceDate: Sat Aug 17 2013 17:54:57 GMT+0900 (JST),
-    #      index: 0,
-    #      text: 'Sep 12-13',
-    #      concordance: 'Sep 12-13' }
-    parseNaturalTextDate: (naturalTextDate, context)->
+    parsePredicate: (input, context) ->
       modifier = null
       parseDateResults = null
-      dataMatch = null
-      ended = no
+      dateMatch = null
+      dateDetected = no
+      dateString = null
+      fullMatch = null
+      nextInput = null
       theTime = @getTime()
 
-      M.Matcher::matchDate = -> 
-        m = @match(/^(.+)()$/, (m, match) => 
-          dataMatch = match.trim() 
-          parseDateResults = chrono.parse(dataMatch, theTime)
-          if parseDateResults.length > 0 and parseDateResults[0].index is 0
-            m.onEnd( => ended = yes)
-        )
-        return m
-
-      M(naturalTextDate, context).match(['its ', 'it is '], optional: yes)
+      M(input, context).match(['its ', 'it is '], optional: yes)
         .match(['before ', 'after '], optional: yes, (m, match) => modifier = match.trim())
-        .matchDate()
+        .match(/^(.+)?($| for .*| and .*| or .*|\).*)/, (m, match) => 
+          possibleDateString = match.trim() 
+          parseDateResults = chrono.parse(possibleDateString, theTime)
+          if parseDateResults.length > 0 and parseDateResults[0].index is 0
+            dateDetected = yes
+            fullMatch = m.getFullMatches()[0]
+            dateString = possibleDateString
+            nextInput =  m.inputs[0]
+        )
 
-      if ended
+      if dateDetected
         assert parseDateResults?
         if parseDateResults.length is 0
-          context?.addError("Could not parse date: \"#{dataMatch}\"")
+          context?.addError("Could not parse date: \"#{dateMatch}\"")
           return null
         else if parseDateResults.length > 1
-          context?.addError("Multiple dates given: \"#{dataMatch}\"")
+          context?.addError("Multiple dates given: \"#{dateMatch}\"")
           return null
         parseResult = parseDateResults[0]
 
@@ -228,11 +76,127 @@ module.exports = (env) ->
             modifier = 'range'
           else
             modifier = 'exact'
+
+        assert fullMatch?
+        assert nextInput?
         return {
-          parseResult: parseResult
-          modifier: modifier
+          token: fullMatch
+          nextInput: nextInput
+          predicateHandler: new CronPredicateHandler(this, dateString, modifier)
         }
       else return null
+
+  class CronPredicateHandler extends env.predicates.PredicateHandler
+
+    constructor: (@provider, @dateString, @modifier) ->
+      parseResult = @reparseDateString()
+
+      {second, minute, hour, day, month, dayOfWeek} = @parseDateToCronFormat(parseResult.start)
+      @jobs = []
+      switch @modifier
+        when 'exact'
+          @jobs.push new CronJob(
+            cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
+            onTick: => @emit "change", 'event'
+            start: false
+          )
+        when 'before'
+          ###
+          before means same day but before the time so the cronjob must trigger at 0:00 
+          ###
+          @jobs.push new CronJob(
+            cronTime: "0 0 0 #{day} #{month} #{dayOfWeek}"
+            onTick: => @emit "change", true
+            start: false
+          )
+          # and the predicate gets false at the given time
+          @jobs.push new CronJob(
+            cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
+            onTick: => @emit "change", false
+            start: false
+          )
+        when 'after'
+          # predicate gets true at the given time
+          @jobs.push new CronJob(
+            cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
+            onTick: => @emit "change", true
+            start: false
+          )
+          # and false at the end of the day
+          @jobs.push new CronJob(
+            cronTime: "59 59 23 #{day} #{month} #{dayOfWeek}"
+            onTick: => @emit "change", false
+            start: false
+          )
+        when 'range'
+          # predicate gets true at the given time
+          @jobs.push new CronJob(
+            cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
+            onTick: => @emit "change", true
+            start: false
+          )
+          # and gets false at the end time
+          {second, minute, hour, day, month, dayOfWeek} = @parseDateToCronFormat(parseResult.end)
+          @jobs.push new CronJob(
+            cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
+            onTick: => @emit "change", false
+            start: false
+          )
+        else assert false
+      job.start() for job in @jobs
+
+
+    getType: -> if @modifier is 'exact' then 'event' else 'state'
+
+
+    reparseDateString: ->
+      theTime = @provider.getTime()
+      return chrono.parse(@dateString, theTime)[0]
+
+    getValue: ->
+      parseResult = @reparseDateString()
+
+      now = parseResult.referenceDate
+      start = parseResult.startDate
+      end = parseResult.endDate
+
+      unless parseResult.start.hour?
+        start.setHours now.getHours()
+      unless parseResult.start.minute?
+        start.setMinutes now.getMinutes()
+      unless parseResult.start.second?
+        start.setSeconds now.getSeconds()
+
+      if 'day' in parseResult.start.impliedComponents
+        start.setDate now.getDate()
+      if 'month' in parseResult.start.impliedComponents
+        start.setMonth now.getMonth()
+      if 'year' in parseResult.start.impliedComponents
+        start.setFullYear now.getFullYear()
+
+      if @modifier is 'exact'
+        start.setMilliseconds now.getMilliseconds()
+
+        if parseResult.start.dayOfWeek?
+          if parseResult.start.dayOfWeek isnt now.getDay()
+            return Q(false)
+
+      # console.log "now: ", now
+      # console.log "start: ", start
+      # console.log "end: ", end
+
+      return Q switch @modifier
+        when 'exact' then start >= now and start <= now # start == now does not work!
+        when 'after' then now >= start
+        when 'before' then now <= start
+        when 'range' then start <= now <= end
+        else assert false
+
+
+    # Removes the notification for an with `notifyWhen` registered predicate. 
+    destroy: ->
+      for cj in @jobs
+        cj.stop()
 
     # Convert a parsedDate to a cronjob-syntax like object. The parsedDate must be parsed from 
     # [chrono-node](https://github.com/berryboy/chrono). For Exampe converts the parsedDate of
