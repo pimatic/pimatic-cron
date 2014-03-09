@@ -48,7 +48,7 @@ module.exports = (env) ->
 
       M(input, context).match(['its ', 'it is '], optional: yes)
         .match(['before ', 'after '], optional: yes, (m, match) => modifier = match.trim())
-        .match(/^(.+)?($| for .*| and .*| or .*|\).*)/, (m, match) => 
+        .match(/^(.+?)($| for .*| and .*| or .*|\).*)/, (m, match) => 
           possibleDateString = match.trim() 
           parseDateResults = chrono.parse(possibleDateString, theTime)
           if parseDateResults.length > 0 and parseDateResults[0].index is 0
