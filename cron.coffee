@@ -27,12 +27,10 @@ module.exports = (env) ->
   # ##The PredicateProvider
   # Provides the time and time events for the rule module.
   class CronPredicateProvider extends env.predicates.PredicateProvider
-    listener: []
 
     constructor: (@config) ->
       env.logger.info "the time is: #{@getTime()}"
       return 
-
 
     getTime: -> new Date()
 
@@ -143,11 +141,11 @@ module.exports = (env) ->
             start: false
           )
         else assert false
+
+    setup: -> 
       job.start() for job in @jobs
 
-
     getType: -> if @modifier is 'exact' then 'event' else 'state'
-
 
     reparseDateString: ->
       theTime = @provider.getTime()
