@@ -191,6 +191,7 @@ module.exports = (env) ->
             predHandler = parseResult.predicateHandler
             assert predHandler?
 
+            predHandler.setup()
             predHandler.once('change', (type) =>
               assert.equal "event", type
               finish()
@@ -209,6 +210,7 @@ module.exports = (env) ->
             predHandler = parseResult.predicateHandler
             assert predHandler?
 
+            predHandler.setup()
             callCount = 0
             predHandler.on('change', (type) =>
               assert typeof type is "boolean"
@@ -234,6 +236,7 @@ module.exports = (env) ->
             predHandler = parseResult.predicateHandler
             assert predHandler?
 
+            predHandler.setup()
             callCount = 0
             predHandler.on('change', (type) =>
               assert typeof type is "boolean"
