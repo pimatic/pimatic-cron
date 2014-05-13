@@ -53,7 +53,7 @@ module.exports = (env) ->
             dateDetected = yes
             fullMatch = m.getFullMatch()
             dateString = possibleDateString
-            nextInput =  m.input
+            nextInput =  m.getRemainingInput()
         )
 
       if dateDetected
