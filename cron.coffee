@@ -51,9 +51,9 @@ module.exports = (env) ->
           parseDateResults = chrono.parse(possibleDateString, theTime)
           if parseDateResults.length > 0 and parseDateResults[0].index is 0
             dateDetected = yes
-            fullMatch = m.getFullMatches()[0]
+            fullMatch = m.getFullMatch()
             dateString = possibleDateString
-            nextInput =  m.inputs[0]
+            nextInput =  m.input
         )
 
       if dateDetected
