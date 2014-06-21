@@ -4,8 +4,6 @@ module.exports = (env) ->
   spawn = require("child_process").spawn
   util = require 'util'
 
-  # * pimatic imports.
-  convict = env.require "convict"
   Q = env.require 'q'
   assert = env.require 'cassert'
   M = env.matcher

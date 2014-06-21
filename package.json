@@ -6,6 +6,7 @@
     "doc",
     "test",
     "cron.coffee",
+    "cron-config-schema.coffee",
     "README.md"
   ],
   "version": "0.8.0",
@@ -14,6 +15,7 @@
     "type": "git",
     "url": "git://github.com/pimatic/pimatic-cron.git"
   },
+  "configSchema": "cron-config-schema.coffee",
   "dependencies": {
     "chrono-node": "~0.1.6",
     "cron": "~1.0.3"
