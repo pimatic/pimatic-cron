@@ -4,7 +4,7 @@ module.exports = (env) ->
   spawn = require("child_process").spawn
   util = require 'util'
 
-  Q = env.require 'q'
+  Promise = env.require 'bluebird'
   assert = env.require 'cassert'
   M = env.matcher
 
@@ -175,19 +175,20 @@ module.exports = (env) ->
 
         if parseResult.start.dayOfWeek?
           if parseResult.start.dayOfWeek isnt now.getDay()
-            return Q(false)
+            return Promise.resolve(false)
 
       # console.log "now: ", now
       # console.log "start: ", start
       # console.log "end: ", end
 
-      return Q switch @modifier
-        when 'exact' then start >= now and start <= now # start == now does not work!
-        when 'after' then now >= start
-        when 'before' then now <= start
-        when 'range' then start <= now <= end
-        else assert false
-
+      return Promise.resolve(
+        switch @modifier
+          when 'exact' then start >= now and start <= now # start == now does not work!
+          when 'after' then now >= start
+          when 'before' then now <= start
+          when 'range' then start <= now <= end
+          else assert false
+      )
 
     # Removes the notification for an with `notifyWhen` registered predicate. 
     destroy: ->
