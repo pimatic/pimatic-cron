@@ -18,15 +18,15 @@ module.exports = (env) ->
 
     # The `init` function just registers the clock actuator.
     init: (app, @framework, @config) =>
-      framework.ruleManager.addPredicateProvider(new CronPredicateProvider config)
+      framework.ruleManager.addPredicateProvider(new CronPredicateProvider(framework, config))
 
-  plugin = new CronPlugin
+  plugin = new CronPlugin()
 
   # ##The PredicateProvider
   # Provides the time and time events for the rule module.
   class CronPredicateProvider extends env.predicates.PredicateProvider
 
-    constructor: (@config) ->
+    constructor: (@framework, @config) ->
       env.logger.info "the time is: #{@getTime()}"
       return 
 
@@ -40,37 +40,65 @@ module.exports = (env) ->
       dateString = null
       fullMatch = null
       nextInput = null
+      exprTokens = null
       theTime = @getTime()
 
-      M(input, context).match(['its ', 'it is '], optional: yes)
-        .match(['before ', 'after '], optional: yes, (m, match) => modifier = match.trim())
-        .match(/^(.+?)($| for .*| and .*| or .*|\).*|\].*)/, (m, match) => 
-          possibleDateString = match.trim() 
-          parseDateResults = chrono.parse(possibleDateString, theTime)
-          if parseDateResults.length > 0 and parseDateResults[0].index is 0
-            dateDetected = yes
-            fullMatch = m.getFullMatch()
-            dateString = possibleDateString
-            nextInput =  m.getRemainingInput()
+      onDateStringMatch = ( (m, match) => 
+        possibleDateString = match.trim() 
+        parseDateResults = chrono.parse(possibleDateString, theTime)
+        if parseDateResults.length > 0 and parseDateResults[0].index is 0
+          dateDetected = yes
+          fullMatch = m.getFullMatch()
+          dateString = possibleDateString
+          nextInput =  m.getRemainingInput()
+        return m
+      )
+
+      onDateStringExprMatch = ( (m, tokens) =>
+        exprTokens = tokens
+        dateDetected = yes
+        fullMatch = m.getFullMatch()
+        nextInput = m.getRemainingInput()
+        return m
+      )
+
+      hadPrefix = false
+      M(input, context)
+        .match(['its ', 'it is '], optional: yes, (m, match) => hadPrefix = yes)
+        .match(['before ', 'after '], optional: yes, (m, match) => 
+          modifier = match.trim(); hadPrefix = yes
         )
+        .or([
+          ( (m) => m.match(/^(.+?)($| for .*| and .*| or .*|\).*|\].*)/, onDateStringMatch) ), 
+          ( (m) => 
+            if hadPrefix then m.matchStringWithVars(onDateStringExprMatch) 
+            else M(null, context) 
+          ),
+          ( (m) => 
+            if hadPrefix then m.matchVariable( (m, v) => onDateStringExprMatch(m, [v]) )
+            else M(null, context)
+          )
+        ])
 
       if dateDetected
-        assert parseDateResults?
-        if parseDateResults.length is 0
-          context?.addError("Could not parse date: \"#{dateMatch}\"")
-          return null
-        else if parseDateResults.length > 1
-          context?.addError("Multiple dates given: \"#{dateMatch}\"")
-          return null
-        parseResult = parseDateResults[0]
-
-        if modifier in ['after', 'before'] and parseResult.end?
-          context?.addError("You can't give a date range when using \"#{modifier}\"")
-
-        unless modifier?
-          if parseResult.end?
-            modifier = 'range'
-          else
+        if dateString?
+          if parseDateResults.length is 0
+            context?.addError("Could not parse date: \"#{dateMatch}\"")
+            return null
+          else if parseDateResults.length > 1
+            context?.addError("Multiple dates given: \"#{dateMatch}\"")
+            return null
+          parseResult = parseDateResults[0]
+          if modifier in ['after', 'before'] and parseResult.end?
+            context?.addError("You can't give a date range when using \"#{modifier}\"")
+          unless modifier?
+            if parseResult.end?
+              modifier = 'range'
+            else
+              modifier = 'exact'
+        else
+          assert Array.isArray exprTokens
+          unless modifier?
             modifier = 'exact'
 
         assert fullMatch?
@@ -78,16 +106,20 @@ module.exports = (env) ->
         return {
           token: fullMatch
           nextInput: nextInput
-          predicateHandler: new CronPredicateHandler(this, dateString, modifier)
+          predicateHandler: (
+            if dateString? then new StringCronPredicateHandler(this, modifier, dateString)
+            else new ExprCronPredicateHandler(this, modifier, exprTokens)
+          )
         }
       else return null
 
-  class CronPredicateHandler extends env.predicates.PredicateHandler
+  class BaseCronPredicateHandler extends env.predicates.PredicateHandler
 
-    constructor: (@provider, @dateString, @modifier) ->
-      parseResult = @reparseDateString()
+    constructor: (@provider, @modifier) -> #nop
 
-      {second, minute, hour, day, month, dayOfWeek} = @parseDateToCronFormat(parseResult.start)
+    _createJobs: (dateString) ->
+      parseResult = @_reparseDateString(dateString)
+      {second, minute, hour, day, month, dayOfWeek} = @_parseDateToCronFormat(parseResult.start)
       @jobs = []
       switch @modifier
         when 'exact'
@@ -132,7 +164,7 @@ module.exports = (env) ->
             start: false
           )
           # and gets false at the end time
-          {second, minute, hour, day, month, dayOfWeek} = @parseDateToCronFormat(parseResult.end)
+          {second, minute, hour, day, month, dayOfWeek} = @_parseDateToCronFormat(parseResult.end)
           @jobs.push new CronJob(
             cronTime: "#{second} #{minute} #{hour} #{day} #{month} #{dayOfWeek}"
             onTick: => @emit "change", false
@@ -140,17 +172,18 @@ module.exports = (env) ->
           )
         else assert false
 
-    setup: -> 
+    _setup: (dateString) -> 
+      @_createJobs(dateString)
       job.start() for job in @jobs
 
     getType: -> if @modifier is 'exact' then 'event' else 'state'
 
-    reparseDateString: ->
+    _reparseDateString: (dateString) ->
       theTime = @provider.getTime()
-      return chrono.parse(@dateString, theTime)[0]
+      return chrono.parse(dateString, theTime)[0]
 
-    getValue: ->
-      parseResult = @reparseDateString()
+    _getValue: (dateString)->
+      parseResult = @_reparseDateString(dateString)
 
       now = parseResult.referenceDate
       start = parseResult.startDate
@@ -191,7 +224,7 @@ module.exports = (env) ->
       )
 
     # Removes the notification for an with `notifyWhen` registered predicate. 
-    destroy: ->
+    _destroy: ->
       for cj in @jobs
         cj.stop()
 
@@ -218,7 +251,7 @@ module.exports = (env) ->
     #       month: "*"
     #       dayOfWeek: 1
     #     }
-    parseDateToCronFormat: (date)->
+    _parseDateToCronFormat: (date) ->
       second = date.second
       minute = date.minute
       hour = date.hour
@@ -248,5 +281,51 @@ module.exports = (env) ->
         month: month
         dayOfWeek: dayOfWeek
       }
+
+  class StringCronPredicateHandler extends BaseCronPredicateHandler
+
+    constructor: (provider, modifier, @dateString) ->
+      super(provider, modifier)
+      
+    setup: -> 
+      @_setup(@dateString)
+      super()
+
+    destroy: ->
+      @_destroy()
+      super()
+      
+    getValue: -> @_getValue(@dateString)
+
+  class ExprCronPredicateHandler extends BaseCronPredicateHandler
+
+    constructor: (provider, modifier, @exprTokens) ->
+      super(provider, modifier)
+      @_variableManager = @provider.framework.variableManager
+
+    _setupJobs: ->       
+      @_variableManager.evaluateStringExpression(@exprTokens).then( (dateString) => 
+        if @destroyed then return
+        @_setup(dateString)
+      ).done()
+
+    setup: ->
+      @destroyed = no
+      @_setupJobs()
+      @_variableManager.notifyOnChange(@exprTokens, @expChangeListener = () =>
+        @_destroy()
+        @_setupJobs()
+      )
+      super()
+      
+    getValue: -> 
+      return @_variableManager.evaluateStringExpression(@exprTokens).then( (dateString) => 
+        return @_getValue(dateString)
+      )
+
+    destroy: ->
+      @_variableManager.cancelNotifyOnChange(@expChangeListener)
+      @destroyed = yes
+      super()
 
   return plugin

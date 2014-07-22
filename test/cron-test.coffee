@@ -160,7 +160,9 @@ module.exports = (env) ->
             assert result?
             assert.equal test.modifier, result.predicateHandler.modifier
             test.predHandler = result.predicateHandler
-            test.parseResult = result.predicateHandler.reparseDateString()
+            test.parseResult = result.predicateHandler._reparseDateString(
+              result.predicateHandler.dateString
+            )
             parseResult = test.parseResult.start
             for name, val of test.date
               assert.equal val, parseResult[name]
@@ -176,7 +178,7 @@ module.exports = (env) ->
       describe '#parseDateToCronFormat()', =>
         createTestCronFormat = (test, pred) =>
           it "should parse #{pred}", =>
-            cronFormat = test.predHandler.parseDateToCronFormat test.parseResult.start
+            cronFormat = test.predHandler._parseDateToCronFormat test.parseResult.start
             assert.deepEqual test.cronFormat, cronFormat
         for test in tests
           for pred in test.predicates
