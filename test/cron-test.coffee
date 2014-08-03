@@ -3,6 +3,26 @@ module.exports = (env) ->
   sinon = env.require 'sinon'
   assert = env.require "assert"
 
+  createDummyParseContext = ->
+    variables = {}
+    functions = {}
+    return context = {
+      autocomplete: []
+      format: []
+      errors: []
+      warnings: []
+      variables,
+      functions
+      addHint: ({autocomplete: a, format: f}) ->
+      addError: (message) -> @errors.push message
+      addWarning: (message) -> @warnings.push message
+      hasErrors: -> (@errors.length > 0)
+      getErrorsAsString: -> _(@errors).reduce((ms, m) => "#{ms}, #{m}")
+      finalize: () -> 
+        @autocomplete = _(@autocomplete).uniq().sortBy((s)=>s.toLowerCase()).value()
+        @format = _(@format).uniq().sortBy((s)=>s.toLowerCase()).value()
+    }
+
   describe "cron", ->
 
     plugin = null
@@ -156,7 +176,8 @@ module.exports = (env) ->
       describe '#parseNaturalTextDate()', =>
         createTestNaturalText = (test, pred) =>
           it "should parse #{pred}", =>
-            result = @cronPredProv.parsePredicate(pred)
+            context = createDummyParseContext()
+            result = @cronPredProv.parsePredicate(pred, context)
             assert result?
             assert.equal test.modifier, result.predicateHandler.modifier
             test.predHandler = result.predicateHandler
@@ -188,8 +209,8 @@ module.exports = (env) ->
         describe '#on "change"', =>
           that = @
           it "should notify when its 9:00", (finish) ->
-
-            parseResult = that.cronPredProv.parsePredicate("its 9:00")
+            context = createDummyParseContext()
+            parseResult = that.cronPredProv.parsePredicate("its 9:00", context)
             predHandler = parseResult.predicateHandler
             assert predHandler?
 
@@ -207,8 +228,8 @@ module.exports = (env) ->
             predHandler.jobs[0].options.onTick()
 
           it "should notify when its after 9:00", (finish) ->
-
-            parseResult = that.cronPredProv.parsePredicate( "its after 9:00")
+            context = createDummyParseContext()
+            parseResult = that.cronPredProv.parsePredicate( "its after 9:00", context)
             predHandler = parseResult.predicateHandler
             assert predHandler?
 
@@ -233,8 +254,8 @@ module.exports = (env) ->
             predHandler.jobs[1].options.onTick()
 
           it "should notify when its before 9:00", (finish) ->
-
-            parseResult = that.cronPredProv.parsePredicate( "its before 9:00")
+            context = createDummyParseContext()
+            parseResult = that.cronPredProv.parsePredicate( "its before 9:00", context)
             predHandler = parseResult.predicateHandler
             assert predHandler?
 
@@ -299,7 +320,8 @@ module.exports = (env) ->
             do(tc) =>
               it "should return #{tc.isTrue} for \"#{tc.predicate}\"", (finish) ->
                 that.cronPredProv.getTime = => tc.time
-                parseResult = that.cronPredProv.parsePredicate(tc.predicate)
+                context = createDummyParseContext()
+                parseResult = that.cronPredProv.parsePredicate(tc.predicate, context)
                 predHandler = parseResult.predicateHandler
                 assert predHandler?
 
