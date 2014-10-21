@@ -1,4 +1,5 @@
-{ "name": "pimatic-cron",
+{
+  "name": "pimatic-cron",
   "description": "Provides predicates for time designations, so actions can be triggert at a specific time.",
   "author": "Oliver Schneider <oliverschneider89+sweetpi@gmail.com> (http://sweetpi.de)",
   "main": "cron.coffee",
@@ -9,7 +10,7 @@
     "cron-config-schema.coffee",
     "README.md"
   ],
-  "version": "0.8.0",
+  "version": "0.8.1",
   "homepage": "http://github.com/pimatic/pimatic",
   "repository": {
     "type": "git",
@@ -22,7 +23,13 @@
     "cron": "~1.0.3"
   },
   "keywords": [
-    "pimatic", "predicates", "cron", "cronjob", "time", "date", "schedule"
+    "pimatic",
+    "predicates",
+    "cron",
+    "cronjob",
+    "time",
+    "date",
+    "schedule"
   ],
   "peerDependencies": {
     "pimatic": "0.8.*"
