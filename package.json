@@ -15,11 +15,15 @@
     "type": "git",
     "url": "git://github.com/pimatic/pimatic-cron.git"
   },
+  "icon": "icon.svg",
   "configSchema": "cron-config-schema.coffee",
   "dependencies": {
     "chrono-node": "~0.1.6",
     "cron": "~1.0.3"
   },
+  "keywords": [
+    "pimatic", "predicates", "cron", "cronjob", "time", "date", "schedule"
+  ],
   "peerDependencies": {
     "pimatic": "0.8.*"
   },
