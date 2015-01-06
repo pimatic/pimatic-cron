@@ -119,6 +119,8 @@ module.exports = (env) ->
 
     _createJobs: (dateString) ->
       parseResult = @_reparseDateString(dateString)
+      unless parseResult?
+        throw new Error("\"#{dateString}\" is not a valid date or time.")
       {second, minute, hour, day, month, dayOfWeek} = @_parseDateToCronFormat(parseResult.start)
       @jobs = []
       switch @modifier
@@ -184,7 +186,8 @@ module.exports = (env) ->
 
     _getValue: (dateString)->
       parseResult = @_reparseDateString(dateString)
-
+      unless parseResult?
+        throw new Error("\"#{dateString}\" is not a valid date or time.")
       now = parseResult.referenceDate
       start = parseResult.startDate
       end = parseResult.endDate
@@ -225,8 +228,9 @@ module.exports = (env) ->
 
     # Removes the notification for an with `notifyWhen` registered predicate. 
     _destroy: ->
-      for cj in @jobs
-        cj.stop()
+      if @jobs?
+        for cj in @jobs
+          cj.stop()
 
     # Convert a parsedDate to a cronjob-syntax like object. The parsedDate must be parsed from 
     # [chrono-node](https://github.com/berryboy/chrono). For Exampe converts the parsedDate of
@@ -306,8 +310,11 @@ module.exports = (env) ->
     _setupJobs: ->       
       @_variableManager.evaluateStringExpression(@exprTokens).then( (dateString) => 
         if @destroyed then return
-        @_setup(dateString)
-      ).done()
+        @_setup("#{dateString}")
+      ).catch( (error) ->
+        env.logger.error("Error creating cron predicate handler: #{error.message}")
+        env.logger.debug(error.stack)
+      )
 
     setup: ->
       @destroyed = no
@@ -320,7 +327,7 @@ module.exports = (env) ->
       
     getValue: -> 
       return @_variableManager.evaluateStringExpression(@exprTokens).then( (dateString) => 
-        return @_getValue(dateString)
+        return @_getValue("#{dateString}")
       )
 
     destroy: ->
