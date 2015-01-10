@@ -12,6 +12,7 @@ module.exports = (env) ->
   chrono = require 'chrono-node'  
   # * `node-cron`: Triggers the time events.
   CronJob = env.CronJob or require('cron').CronJob
+  milliseconds = env.require './lib/milliseconds'
 
   # ##The CronPlugin
   class CronPlugin extends env.plugins.Plugin
@@ -19,6 +20,7 @@ module.exports = (env) ->
     # The `init` function just registers the clock actuator.
     init: (app, @framework, @config) =>
       @framework.ruleManager.addPredicateProvider(new CronPredicateProvider(framework, config))
+      @framework.ruleManager.addPredicateProvider(new EveryCronPredicateProvider(framework, config))
 
   plugin = new CronPlugin()
 
@@ -112,6 +114,7 @@ module.exports = (env) ->
           )
         }
       else return null
+
 
   class BaseCronPredicateHandler extends env.predicates.PredicateHandler
 
@@ -332,6 +335,89 @@ module.exports = (env) ->
 
     destroy: ->
       @_variableManager.cancelNotifyOnChange(@expChangeListener)
+      @destroyed = yes
+      super()
+
+
+  # ##The EveryPredicateProvider
+  # Provides every x minutes/hours/... predicates.
+  class EveryCronPredicateProvider extends env.predicates.PredicateProvider
+
+    constructor: (@framework, @config) ->
+      super()
+
+    parsePredicate: (input, context) ->
+      exprTokens = null
+      fullMatch = null
+      nextInput = null
+      matchingUnit = null
+      M(input, context)
+        .match('every ')
+        .matchTimeDurationExpression( (m, {tokens, unit}) =>
+          exprTokens = tokens
+          matchingUnit = unit
+          fullMatch = m.getFullMatch()
+          nextInput = m.getRemainingInput()
+        )
+
+      if fullMatch?
+        assert matchingUnit?
+        assert exprTokens?
+        return {
+          token: fullMatch
+          nextInput: nextInput
+          predicateHandler: new EveryCronPredicateHandler(@framework, exprTokens, matchingUnit)
+        }
+      else return null
+
+
+  class EveryCronPredicateHandler extends env.predicates.PredicateHandler
+
+    constructor: (framework, @exprTokens, @unit) ->
+      super()
+      @_variableManager = framework.variableManager
+      
+    setup: ->
+      @_setupTimeout()
+      # change the timeout if the expr changes:
+      @_variableManager.notifyOnChange(@exprTokens, @expChangeListener = () =>
+        @_lastTime = null
+        @_setupTimeout()
+      )
+      super()
+
+    _setupTimeout: ->
+      @destroyed = no
+      @_variableManager.evaluateStringExpression(@exprTokens).then( (time) => 
+        if @destroyed then return
+        timeMs = milliseconds.parse "#{time} #{@unit}"
+        now = new Date().getTime()
+        unless @_lastTime?
+          # aways ececute on full minutes, etc...
+          @_lastTime = now - (now % timeMs)
+        timeDiff = (@_lastTime + timeMs) - now
+        timeDiff = 0 if timeDiff < 0
+
+        clearTimeout(@_timeout)
+        @_timeout = setTimeout( ( =>
+          @emit "change", 'event'
+          @_lastTime += timeMs
+          @_setupTimeout()
+        ), timeDiff)
+
+      ).catch( (error) ->
+        env.logger.error("Error creating cron predicate handler: #{error.message}")
+        env.logger.debug(error.stack)
+      )
+      
+    getValue: -> Promise.resolve false
+    getType: -> 'event'
+
+    destroy: ->
+      if @expChangeListener?
+        clearTimeout(@_timeout)
+        @_variableManager.cancelNotifyOnChange(@expChangeListener)
+        @expChangeListener = null
       @destroyed = yes
       super()
 
