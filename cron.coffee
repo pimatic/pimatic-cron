@@ -28,6 +28,17 @@ module.exports = (env) ->
   # Provides the time and time events for the rule module.
   class CronPredicateProvider extends env.predicates.PredicateProvider
 
+    presets: [
+      {
+        name: "time"
+        input: "its 8:00"
+      },
+      {
+        name: "before/after time"
+        input: "its after 8:00"
+      }
+    ]
+
     constructor: (@framework, @config) ->
       env.logger.info "the time is: #{@getTime()}"
       return 
@@ -66,12 +77,24 @@ module.exports = (env) ->
 
       hadPrefix = false
       M(input, context)
-        .match(['its ', 'it is '], optional: yes, (m, match) => hadPrefix = yes)
-        .match(['before ', 'after '], optional: yes, (m, match) => 
-          modifier = match.trim(); hadPrefix = yes
+        .match(
+          ['its ', 'it is '], 
+          optional: yes, type: 'static', 
+          (m, match) => hadPrefix = yes
+        )
+        .match(
+          ['before ', 'after '], 
+          param: 'modifier', type: 'select', optional: yes, 
+          (m, match) => modifier = match.trim(); hadPrefix = yes
         )
         .or([
-          ( (m) => m.match(/^(.+?)($| for .*| and .*| or .*|\).*|\].*)/, onDateStringMatch) ), 
+          ( (m) => 
+            m.match(
+              /^(.+?)($| for .*| and .*| or .*|\).*|\].*)/, 
+              param: 'time', type: 'time', 
+              onDateStringMatch
+            ) 
+          ), 
           ( (m) => 
             if hadPrefix then m.matchStringWithVars(onDateStringExprMatch) 
             else M(null, context) 
