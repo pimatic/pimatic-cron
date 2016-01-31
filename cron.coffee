@@ -225,12 +225,12 @@ module.exports = (env) ->
       unless parseResult.start.second?
         start.setSeconds now.getSeconds()
 
-      if 'day' in parseResult.start.impliedComponents
-        start.setDate now.getDate()
-      if 'month' in parseResult.start.impliedComponents
-        start.setMonth now.getMonth()
       if 'year' in parseResult.start.impliedComponents
         start.setFullYear now.getFullYear()
+      if 'month' in parseResult.start.impliedComponents
+        start.setMonth now.getMonth()
+      if 'day' in parseResult.start.impliedComponents
+        start.setDate now.getDate()
 
       if @modifier is 'exact'
         start.setMilliseconds now.getMilliseconds()
