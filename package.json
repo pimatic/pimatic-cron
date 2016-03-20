@@ -9,7 +9,8 @@
     "cron.coffee",
     "cron-config-schema.coffee",
     "README.md",
-    "icon.svg"
+    "icon.svg",
+    "LICENSE"
   ],
   "version": "0.8.6",
   "homepage": "http://github.com/pimatic/pimatic",
@@ -18,6 +19,7 @@
     "url": "git://github.com/pimatic/pimatic-cron.git"
   },
   "icon": "icon.svg",
+  "license": "GPL-2.0",
   "configSchema": "cron-config-schema.coffee",
   "dependencies": {
     "chrono-node": "~0.1.6",
@@ -33,7 +35,7 @@
     "schedule"
   ],
   "peerDependencies": {
-    "pimatic": "0.8.*"
+    "pimatic": ">=0.8.0 <0.9.0"
   },
   "engines": {
     "node": ">0.8.x",
