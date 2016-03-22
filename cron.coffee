@@ -19,8 +19,8 @@ module.exports = (env) ->
 
     # The `init` function just registers the clock actuator.
     init: (app, @framework, @config) =>
-      @framework.ruleManager.addPredicateProvider(new CronPredicateProvider(framework, config))
-      @framework.ruleManager.addPredicateProvider(new EveryCronPredicateProvider(framework, config))
+      @framework.ruleManager.addPredicateProvider(new CronPredicateProvider(@framework, @config))
+      @framework.ruleManager.addPredicateProvider(new EveryCronPredicateProvider(@framework, @config))
 
   plugin = new CronPlugin()
 
