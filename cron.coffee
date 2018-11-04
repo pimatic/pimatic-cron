@@ -40,6 +40,7 @@ module.exports = (env) ->
     ]
 
     constructor: (@framework, @config) ->
+      super()
       env.logger.info "the time is: #{@getTime()}"
       return 
 
@@ -141,7 +142,8 @@ module.exports = (env) ->
 
   class BaseCronPredicateHandler extends env.predicates.PredicateHandler
 
-    constructor: (@provider, @modifier) -> #nop
+    constructor: (@provider, @modifier) -> 
+      super()
 
     _createJobs: (dateString) ->
       parseResult = @_reparseDateString(dateString)
